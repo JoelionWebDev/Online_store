@@ -1,36 +1,116 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Joetech Shops — multi-tenant storefront SaaS for Nigerian small businesses
 
-## Getting Started
+Every small business gets its own online shop: products, WhatsApp ordering,
+Paystack card payments (with split payments to the seller's own account), and
+a dashboard. Buyers pick their state and see shops near them first.
 
-First, run the development server:
+**Core rule:** a shop's products are visible to customers ONLY after the owner
+creates an account. No account → no shop → no products listed anywhere.
+Account + shop creation is all it takes for products to go live — no manual
+approval step.
+
+## Stack
+
+- Next.js 16 (App Router) + TypeScript + Tailwind CSS v4
+- Supabase — Postgres + Auth + Storage (product images)
+- Paystack — card payments + split payments (subaccounts)
+- No external fonts (system fonts only, for speed)
+
+## Run it with zero setup (demo mode)
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. Without Supabase keys the site runs in **demo
+mode**: 6 sample shops (Lagos ×2, Abuja, Kano, Enugu, Port Harcourt) with 18
+products, clearly labelled "Demo". Checkout and the dashboard show a
+"connect Supabase" notice instead of crashing.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Full setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Supabase project** — create one at supabase.com, then in the SQL Editor
+   run `supabase/schema.sql` (tables, indexes, RLS). Optionally run
+   `supabase/seed.sql` after pasting your real user id into it.
+2. **Storage bucket** — Storage → New bucket, name `product-images`, **Public
+   bucket ON**. (Public read lets shop pages show photos; uploads go through
+   the server-only `/api/upload` route with the service-role key.)
+3. **Env vars** — copy `.env.example` to `.env.local` and fill in:
+   - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY` (server only — never expose it)
+   - `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`, `PAYSTACK_SECRET_KEY`
+   - `NEXT_PUBLIC_APP_URL` (e.g. https://shops.joetech360.ng)
+4. **Paystack webhook** — in your Paystack dashboard add the webhook URL
+   `https://YOUR-DOMAIN/api/webhooks/paystack`. Start with **test keys**;
+   the webhook verifies the signature and re-verifies every transaction
+   with Paystack before marking an order paid.
+5. **Run it**
+   ```bash
+   npm install
+   npm run dev     # http://localhost:3000
+   npm run build   # production build check
+   ```
 
-## Learn More
+## Deploy to Vercel
 
-To learn more about Next.js, take a look at the following resources:
+Push the repo to GitHub, import it in Vercel, and set the same env vars in
+the Vercel dashboard. Set `NEXT_PUBLIC_APP_URL` to your live domain.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Before Paystack goes live:** complete the CAC business registration —
+Paystack requires a registered business to verify a live account. (Joetech's
+name "360 Joetech Ventures" is already reserved; the registration still needs
+a business address, commencement date and means of ID.)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## How it works
 
-## Deploy on Vercel
+| Route | What it does |
+|---|---|
+| `/` | Marketplace: hero, state picker (saved in localStorage), "Shops in your state", all shops (12/page), How it works |
+| `/shop/[slug]` | Public storefront: shop header, state/city badge, WhatsApp button, product grid — "Order on WhatsApp" + "Buy now" |
+| `/checkout?product=…` | Buyer form (name, phone, email, state, qty) → `/api/checkout` → Paystack |
+| `/checkout/success` | Payment confirmation page |
+| `/auth/login`, `/auth/signup` | Supabase email + password |
+| `/dashboard` | Protected: total paid sales, order count, recent orders |
+| `/dashboard/products` | Add/edit/delete products, image upload or image-URL fallback |
+| `/dashboard/settings` | Shop name, description, state, city, WhatsApp, Paystack subaccount code, logo |
+| `/terms`, `/privacy` | Terms (incl. 5% platform fee) and NDPR-aware privacy policy |
+| `/api/checkout` | Server-side only: reads the price from the DB, computes the total, creates a pending order, initialises Paystack |
+| `/api/webhooks/paystack` | Verifies `x-paystack-signature` (HMAC-SHA512) AND re-verifies the transaction with Paystack before marking an order paid |
+| `/api/upload` | Login + shop-ownership check, images only (JPEG/PNG/WebP ≤ 5 MB), UUID filename, Supabase Storage |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Security notes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Checkout never trusts a price or total from the browser — totals are
+  computed server-side from the database.
+- Split payments: if a shop has a Paystack subaccount code, the transaction
+  is initialised with `subaccount` + a 5% `transaction_charge`, so the
+  seller's money goes to their own Paystack account.
+- Card numbers are never collected or stored — Paystack handles payment
+  details on its own pages.
+- Row Level Security: shops/products readable by everyone (only when the shop
+  has a registered owner); orders readable only by the owning shop's owner;
+  writes only by the owner (`auth.uid() = shops.owner_id`). Checkout and
+  webhook writes use the service-role key, server-side only.
+- All secrets live in env vars only. Never commit `.env.local`.
+
+## Storage & speed
+
+- Product images live in Supabase Storage (CDN), never on Vercel; all images
+  use `loading="lazy"`.
+- DB indexes on `shops(slug)`, `shops(state)`, `products(shop_id)`,
+  `orders(shop_id)`.
+- Shop/product lists are paginated (12 per page); nothing loads everything
+  at once.
+
+## Project structure
+
+```
+src/
+  app/            pages + API routes (see table above)
+  components/     Header/Footer, ShopCard/ProductCard, StatePicker/ShopsNearYou
+  lib/            supabase.ts, paystack.ts, states.ts (36 states + FCT),
+                  demo-data.ts (demo mode), shops.ts (data access),
+                  format.ts
+supabase/         schema.sql, seed.sql
+```
