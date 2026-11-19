@@ -14,6 +14,7 @@ approval step.
 - Next.js 16 (App Router) + TypeScript + Tailwind CSS v4
 - Supabase — Postgres + Auth + Storage (product images)
 - Paystack — card payments + split payments (subaccounts)
+- Resend — order confirmation + seller notification emails (optional)
 - No external fonts (system fonts only, for speed)
 
 ## Run it with zero setup (demo mode)
@@ -45,7 +46,13 @@ products, clearly labelled "Demo". Checkout and the dashboard show a
    `https://YOUR-DOMAIN/api/webhooks/paystack`. Start with **test keys**;
    the webhook verifies the signature and re-verifies every transaction
    with Paystack before marking an order paid.
-5. **Run it**
+5. **Resend (order emails — optional)** — create a free account at
+   resend.com, verify your sending domain, create an API key, and add
+   `RESEND_API_KEY` + `EMAIL_FROM` to `.env.local` (and to Vercel env vars
+   when you deploy). After a payment succeeds, the webhook sends the buyer
+   an order confirmation and the seller a "new paid order" notification.
+   Without the key the app still works — emails are simply skipped.
+6. **Run it**
    ```bash
    npm install
    npm run dev     # http://localhost:3000
@@ -76,7 +83,7 @@ a business address, commencement date and means of ID.)
 | `/dashboard/settings` | Shop name, description, state, city, WhatsApp, Paystack subaccount code, logo |
 | `/terms`, `/privacy` | Terms (incl. 5% platform fee) and NDPR-aware privacy policy |
 | `/api/checkout` | Server-side only: reads the price from the DB, computes the total, creates a pending order, initialises Paystack |
-| `/api/webhooks/paystack` | Verifies `x-paystack-signature` (HMAC-SHA512) AND re-verifies the transaction with Paystack before marking an order paid |
+| `/api/webhooks/paystack` | Verifies `x-paystack-signature` (HMAC-SHA512) AND re-verifies the transaction with Paystack before marking an order paid; then sends the buyer confirmation + seller notification via Resend (never fails the webhook) |
 | `/api/upload` | Login + shop-ownership check, images only (JPEG/PNG/WebP ≤ 5 MB), UUID filename, Supabase Storage |
 
 ## Security notes
@@ -111,6 +118,6 @@ src/
   components/     Header/Footer, ShopCard/ProductCard, StatePicker/ShopsNearYou
   lib/            supabase.ts, paystack.ts, states.ts (36 states + FCT),
                   demo-data.ts (demo mode), shops.ts (data access),
-                  format.ts
+                  format.ts, email.ts (Resend order emails)
 supabase/         schema.sql, seed.sql
 ```
