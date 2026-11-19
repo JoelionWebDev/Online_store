@@ -42,6 +42,7 @@ create table if not exists public.orders (
   shop_id uuid not null references public.shops (id) on delete cascade,
   buyer_name text not null,
   buyer_phone text not null,
+  buyer_email text,
   buyer_state text not null,
   items jsonb not null default '[]'::jsonb,
   total_kobo integer not null check (total_kobo > 0),
@@ -50,6 +51,10 @@ create table if not exists public.orders (
   paystack_reference text,
   created_at timestamptz not null default now()
 );
+
+-- Migration for databases created before buyer_email existed:
+-- (safe to run on a fresh DB too — it no-ops when the column is there)
+alter table public.orders add column if not exists buyer_email text;
 
 -- ---------------------------------------------------------------- indexes
 -- Speed: lookups are always by slug, state or shop_id.
