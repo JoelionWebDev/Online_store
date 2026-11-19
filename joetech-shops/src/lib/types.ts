@@ -37,6 +37,7 @@ export type Order = {
   shop_id: string;
   buyer_name: string;
   buyer_phone: string;
+  buyer_email: string | null;
   buyer_state: string;
   items: OrderItem[];
   total_kobo: number;
