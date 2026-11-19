@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { supabaseServer } from "@/lib/supabase";
 import { verifyTransaction } from "@/lib/paystack";
+import { sendOrderEmails } from "@/lib/email";
+import type { OrderItem } from "@/lib/types";
 
 /**
  * POST /api/webhooks/paystack
@@ -65,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     const { data: order, error: orderError } = await sb
       .from("orders")
-      .select("id, total_kobo, status")
+      .select("id, shop_id, total_kobo, status, buyer_name, buyer_email, buyer_phone, buyer_state, items")
       .eq("paystack_reference", reference)
       .maybeSingle();
     if (orderError) throw new Error(orderError.message);
@@ -80,12 +82,55 @@ export async function POST(req: NextRequest) {
       );
       return NextResponse.json({ received: true });
     }
+    // Only the transition to paid triggers emails — a retried webhook for
+    // an already-paid order must never resend them.
+    let justPaid = false;
     if (order.status !== "paid") {
       const { error: updateError } = await sb
         .from("orders")
         .update({ status: "paid" })
         .eq("id", order.id);
       if (updateError) throw new Error(updateError.message);
+      justPaid = true;
+    }
+
+    if (justPaid) {
+      // Emails must NEVER break payment processing: any failure here is
+      // logged inside sendOrderEmails and the webhook still returns 200.
+      try {
+        const { data: shop } = await sb
+          .from("shops")
+          .select("name, owner_id")
+          .eq("id", order.shop_id)
+          .maybeSingle();
+
+        // Seller email comes from the shop owner's auth account.
+        let sellerEmail: string | null = null;
+        if (shop?.owner_id) {
+          try {
+            const { data: owner } = await sb.auth.admin.getUserById(shop.owner_id);
+            sellerEmail = owner.user?.email ?? null;
+          } catch (err) {
+            console.error("Paystack webhook: seller email lookup failed:", err);
+          }
+        }
+
+        await sendOrderEmails({
+          reference,
+          shopName: shop?.name ?? "Joetech Shops",
+          buyerName: order.buyer_name,
+          buyerPhone: order.buyer_phone,
+          buyerState: order.buyer_state,
+          // Buyer email stored at checkout; fall back to the email Paystack
+          // verified for this transaction (same address in practice).
+          buyerEmail: order.buyer_email ?? verified.customer?.email ?? null,
+          sellerEmail,
+          items: (order.items ?? []) as OrderItem[],
+          totalKobo: order.total_kobo,
+        });
+      } catch (err) {
+        console.error("Paystack webhook: order emails failed:", err);
+      }
     }
     return NextResponse.json({ received: true });
   } catch (err) {
