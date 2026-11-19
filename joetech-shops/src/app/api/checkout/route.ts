@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
       shop_id: shop.id,
       buyer_name: buyerName,
       buyer_phone: buyerPhone,
+      buyer_email: buyerEmail,
       buyer_state: buyerState,
       items: [{ product_id: product.id, name: product.name, qty, price_kobo: product.price_kobo }],
       total_kobo: totalKobo,
