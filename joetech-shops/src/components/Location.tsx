@@ -26,15 +26,23 @@ export function StatePicker() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <label htmlFor="state-picker" className="text-sm font-bold text-slate-700">
+    <div className="flex flex-col gap-3 rounded-[1.5rem] border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white p-5 shadow-card sm:flex-row sm:items-center">
+      <label
+        htmlFor="state-picker"
+        className="flex shrink-0 items-center gap-2 font-display text-base font-extrabold text-slate-900"
+      >
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] text-white shadow-md shadow-blue-600/30">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-4.5 w-4.5" aria-hidden>
+            <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z" />
+          </svg>
+        </span>
         Where do you live?
       </label>
       <select
         id="state-picker"
         value={state}
         onChange={(e) => pick(e.target.value)}
-        className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm focus:border-[#2563EB] focus:outline-none"
+        className="w-full rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition focus:border-[#2563eb] focus:outline-none focus:ring-4 focus:ring-blue-100 sm:w-auto sm:min-w-56"
       >
         <option value="">All states</option>
         {NIGERIAN_STATES.map((s) => (
@@ -45,7 +53,7 @@ export function StatePicker() {
       </select>
       {state && (
         <span className="text-sm text-slate-600">
-          Showing shops in <strong className="text-[#2563EB]">{state}</strong> first.
+          Showing shops in <strong className="text-[#2563eb]">{state}</strong> first.
         </span>
       )}
     </div>
@@ -72,23 +80,27 @@ export function ShopsNearYou({ shops }: { shops: Shop[] }) {
   if (near.length === 0) {
     return (
       <section className="mx-auto mt-10 max-w-6xl px-4">
-        <h2 className="text-2xl font-black text-slate-900">Shops in {state}</h2>
-        <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <h2 className="font-display text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+          Shops in {state}
+        </h2>
+        <p className="mt-3 rounded-[1.5rem] border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 text-sm leading-relaxed text-amber-900 shadow-card">
           No shops in {state} yet — be the first to open one!{" "}
-          <a href="/auth/signup" className="font-bold underline">Open a free shop</a>
+          <a href="/auth/signup" className="font-bold text-[#2563eb] underline">
+            Open a free shop
+          </a>
         </p>
       </section>
     );
   }
   return (
-    <section className="mx-auto mt-10 max-w-6xl px-4">
-      <h2 className="text-2xl font-black text-slate-900">
+    <section className="mx-auto mt-12 max-w-6xl px-4">
+      <h2 className="font-display text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
         Shops in {state} — near you
       </h2>
-      <p className="mt-1 text-sm text-slate-600">
+      <p className="mt-2 text-slate-600">
         Buy from sellers in your own state. Faster delivery, easier pickup.
       </p>
-      <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {near.map((shop) => (
           <ShopCard key={shop.id} shop={shop} />
         ))}
