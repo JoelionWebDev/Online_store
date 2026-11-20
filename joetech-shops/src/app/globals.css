@@ -1,15 +1,84 @@
 @import "tailwindcss";
 
-/* Brand: bold, bright royal blue. System fonts only — no external font
-   downloads, so pages stay fast on slow Nigerian connections. */
+/* Joetech Shops — premium design system.
+   Bold bright royal blue, deep gradients, soft layered shadows, Sora display
+   type + Inter body. Fonts are self-hosted at build time by next/font, so
+   pages stay fast on slow connections. */
 @theme {
   --color-brand: #2563eb;
+  --color-brand-deep: #1e40af;
   --color-brand-dark: #1d4ed8;
-  --color-brand-light: #dbeafe;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  --color-brand-ink: #172554;
+  --color-brand-sky: #38bdf8;
+  --color-gold: #f59e0b;
+  --color-gold-soft: #fbbf24;
+  --color-whatsapp: #25d366;
+  --color-whatsapp-dark: #1da851;
+
+  --font-display: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Layered, blue-tinted shadows — the "3D" depth of the brand. */
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06),
+    0 10px 28px -10px rgb(37 99 235 / 0.22);
+  --shadow-lift: 0 2px 4px rgb(15 23 42 / 0.06),
+    0 24px 44px -14px rgb(37 99 235 / 0.38);
+  --shadow-glow: 0 0 0 1px rgb(255 255 255 / 0.25),
+    0 28px 64px -18px rgb(29 78 216 / 0.55);
+
+  --animate-fade-up: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-float-slow: float 8s ease-in-out 1.4s infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   font-family: var(--font-sans);
+}
+
+::selection {
+  background: #2563eb;
+  color: #fff;
+}
+
+@layer utilities {
+  /* Subtle dot texture for rich blue surfaces (never flat colour). */
+  .bg-dots {
+    background-image: radial-gradient(
+      rgb(255 255 255 / 0.16) 1px,
+      transparent 1px
+    );
+    background-size: 22px 22px;
+  }
+  .bg-dots-blue {
+    background-image: radial-gradient(
+      rgb(37 99 235 / 0.12) 1px,
+      transparent 1px
+    );
+    background-size: 22px 22px;
+  }
 }
